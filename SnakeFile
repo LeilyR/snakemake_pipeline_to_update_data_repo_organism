@@ -14,7 +14,8 @@ def extraIndices():
     files_list = []
     if update_anno == False:
         files_list.append([expand("{release}_BismarkIndex.built", release = gtf.keys()),
-                           expand("{release}_NovoalignMethylIndex.built", release = gtf.keys())])
+                           expand("{release}_NovoalignMethylIndex.built", release = gtf.keys()),
+                           expand("{release}_NovoalignIndex.built", release = gtf.keys())])
     else:
         files_list.append(expand("{release}.renamed", release = gtf.keys()))
     return files_list
@@ -93,10 +94,10 @@ rule BismarkIndex:
         link = lambda wildcards: "ln -s "+os.path.join(outdir, "genome_fasta")+"/genome.fa \
                "+os.path.join(outdir, "BismarkIndex")+"/genome.fa;" if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
         bismarkInd = lambda wildcards: "/package/bismark-0.16.3/bismark_genome_preparation \
-        --path_to_bowtie /package/bowtie2-2.2.3/bin "+os.path.join(outdir,"BismarkIndex") if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+        --path_to_bowtie /package/bowtie2-2.2.3/bin "+os.path.join(outdir,"BismarkIndex")+";" if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
     shell: """
         {params.link}
-        {params.bismarkInd};
+        {params.bismarkInd}
         touch {output.finished}
         """
 
@@ -114,10 +115,22 @@ rule NovoalignMethylIndex:
         {params.NovoalignMethylInd}
         touch {output.finished}
         """
-#
-# rule NovoalignIndex:
-#
-# rule annotation:
+
+rule NovoalignIndex:
+    input: "{release}.renamed"
+    output:
+        finished = temp("{release}_NovoalignIndex.built")
+    params:
+        link = lambda wildcards: "ln -s "+os.path.join(outdir)+"/genome_fasta/genome.fa "+\
+                os.path.join(outdir)+"/NovoalignIndex/genome.fa;"  if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+        NovoalignInd = lambda wildcards: "/package/novoalign-3.07.00/novoindex "+os.path.join(outdir,"NovoalignIndex")+"/genome \
+        "+os.path.join(outdir,"NovoalignIndex")+"/genome.fa; " if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+    shell: """
+        {params.link}
+        {params.NovoalignInd}
+        touch {output.finished}
+        """
+# rule extra_annotation:
 #     HISAT
 #     HISAT2
 #     tophat

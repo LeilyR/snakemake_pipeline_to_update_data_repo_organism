@@ -76,13 +76,14 @@ def main():
         print("\nWarning! Output directory already exists! "
                "The program tries to update the annotation.({})\n".format(args.outdir))
         if os.path.exists(os.path.join(args.outdir,"genome_fasta")):
-            update_anno = True
+            update_anno = False # TODO this is not good and need to be changed! We might need a flag to check if there was already a successful run on this organism
 
     else:
         os.makedirs(args.outdir, exist_ok=False)
         os.makedirs(os.path.join(args.outdir,"Ensembl"), exist_ok = False)
         os.makedirs(os.path.join(args.outdir,"BismarkIndex"), exist_ok = False)
         os.makedirs(os.path.join(args.outdir,"NovoalignMethylIndex"), exist_ok = False)
+        os.makedirs(os.path.join(args.outdir,"NovoalignIndex"), exist_ok = False)
     args.outdir = os.path.abspath(args.outdir)
 
     if args.configfile and not os.path.exists(args.configfile):
