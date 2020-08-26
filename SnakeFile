@@ -44,7 +44,7 @@ rule createIndices:
         touch {output.finished}
         """
 
-# if chrmap is not None:
+# if chrmap is not None: # This is for adding the repeat maskers:
 #     rule convertChromosome: # TODO this is not a working code just to demonstrate what it is supposed to do
 #         input:
 #             dir = "indices",
@@ -134,10 +134,8 @@ rule NovoalignIndex:
 #     HISAT
 #     HISAT2
 #     tophat
-#
-
-#
 # rule BWA2index:
-#
+# rule old_start_indices
+
 onsuccess:
     print("done!") # if there is any file to be removed, anything to be logged, etc.
