@@ -1,0 +1,130 @@
+import glob
+import os
+import yaml
+
+f = open("config.yaml")
+globals().update(yaml.load(f))
+f.close()
+
+gtf = dict()
+for id, url in enumerate(gtfURLs):
+    gtf[gtfNames[id]] = url
+
+def extraIndices():
+    files_list = []
+    if update_anno == False:
+        files_list.append([expand("{release}_BismarkIndex.built", release = gtf.keys()),
+                           expand("{release}_NovoalignMethylIndex.built", release = gtf.keys())])
+    else:
+        files_list.append(expand("{release}.renamed", release = gtf.keys()))
+    return files_list
+
+
+rule all:
+    input:
+            extraIndices()
+
+rule createIndices:
+    input:
+        genomeURL = genomeURL,
+        gtfURL =  lambda wildcards: gtf[wildcards.release]
+    output:
+        outdir = directory("release_{release}"),
+        finished = temp("{release}.finished")
+    params:
+        mode =  lambda wildcards: " --tools none " if (gtfNames[0] != wildcards.release or update_anno == True) else " --tools all ",
+        extras = " --userYAML -j 10 ",
+        blacklist =" --blacklist " + str(blacklist) if blacklist else "",
+        genome = genome
+    shell:"""
+        module load snakePipes/2.1.2;
+        createIndices -o {output.outdir} --genomeURL {input.genomeURL} --gtfURL {input.gtfURL} \
+        {params.blacklist} {params.genome} {params.mode} {params.extras};
+        touch {output.finished}
+        """
+
+# if chrmap is not None:
+#     rule convertChromosome: # TODO this is not a working code just to demonstrate what it is supposed to do
+#         input:
+#             dir = "indices",
+#             chrmap = chrmap
+#         output:
+#             finish = temp("chromosomes.converted")
+#             ucsc = directory("UCSC")
+#         params:
+#         shell:"""
+#             wget --quiet -O - {input.chrmap} > UCSC.map; \
+#             /data/repository/organisms/convertChromosomes.py UCSC.map > \
+#             UCSC
+#             touch {output.finish}
+#             """
+# else:
+#     rule convertChromosome:
+#         input: "indices"
+#         output: temp("chromosomes.converted")
+#         params:
+#         shell:"""
+#             touch {output}
+#         """
+
+
+rule renameFiles:
+     input:
+        path = "release_{release}",
+        check = "{release}.finished"
+     output:
+        finished = temp("{release}.renamed"),
+     params:
+        mv_fasta = lambda wildcards: "cp -r release_"+wildcards.release+"/genome_fasta . ;" if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+        mv_index = lambda wildcards: "cp -r release_"+wildcards.release+"/*ndex . ;" if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+     shell:"""
+         {params.mv_fasta}
+         {params.mv_index}
+         cp -r {input.path}/annotation Ensembl/{input.path};
+         rm -rf {input.path};
+         touch {output.finished}
+         """
+
+rule BismarkIndex:
+    input: "{release}.renamed"
+    output:
+        finished = temp("{release}_BismarkIndex.built")
+    params:
+        link = lambda wildcards: "ln -s "+os.path.join(outdir, "genome_fasta")+"/genome.fa \
+               "+os.path.join(outdir, "BismarkIndex")+"/genome.fa;" if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+        bismarkInd = lambda wildcards: "/package/bismark-0.16.3/bismark_genome_preparation \
+        --path_to_bowtie /package/bowtie2-2.2.3/bin "+os.path.join(outdir,"BismarkIndex") if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+    shell: """
+        {params.link}
+        {params.bismarkInd};
+        touch {output.finished}
+        """
+
+rule NovoalignMethylIndex:
+    input: "{release}.renamed"
+    output:
+        finished = temp("{release}_NovoalignMethylIndex.built")
+    params:
+        link = lambda wildcards: "ln -s "+os.path.join(outdir)+"/genome_fasta/genome.fa "+\
+                os.path.join(outdir)+"/NovoalignMethylIndex/genome.fa;"  if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+        NovoalignMethylInd = lambda wildcards: "/package/novoalign-3.07.00/novoindex -b "+os.path.join(outdir,"NovoalignMethylIndex")+"/genome \
+        "+os.path.join(outdir,"NovoalignMethylIndex")+"/genome.fa; " if (gtfNames[0] == wildcards.release and update_anno == False ) else "",
+    shell: """
+        {params.link}
+        {params.NovoalignMethylInd}
+        touch {output.finished}
+        """
+#
+# rule NovoalignIndex:
+#
+# rule annotation:
+#     HISAT
+#     HISAT2
+#     tophat
+#
+
+#
+# rule BWA2index:
+#
+onsuccess:
+    print("done!") # if there is any file to be removed, anything to be logged, etc.

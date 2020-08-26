@@ -1,0 +1,13 @@
+genomeURL:
+gtfURLs:
+gtfNames:
+outdir:
+snakemake_latency_wait: 300
+blacklist:
+chrmap: # devon's repo
+configfile:
+maxjobs:
+
+# readme:
+# test_out is basically the same as dm6_ensemble
+#
